@@ -1,0 +1,3 @@
+/Users/bruceau/CLionProjects/HelloSFML/cmake-build-debug/CMakeFiles/HelloSFML.dir
+/Users/bruceau/CLionProjects/HelloSFML/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/bruceau/CLionProjects/HelloSFML/cmake-build-debug/CMakeFiles/rebuild_cache.dir
