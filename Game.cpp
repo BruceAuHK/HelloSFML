@@ -1,108 +1,93 @@
-//
-// Created by Bruce au on 6/7/2022.
-//
-
 #include "Game.h"
 
-Game::Game(RenderWindow *window) {
-    // local window pointer always in Game
-    this->window = window;
+Game::Game(sf::RenderWindow& window)
+    : window(window) {
+  this->window.setFramerateLimit(60);
 
-    // Frame Rate Limit
-    this->window->setFramerateLimit(60);
+  this->font.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/Font/Dosis-VariableFont_wght.ttf");
 
-    // Init fonts
-    this->font.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/Font/Dosis-VariableFont_wght.ttf");
+  // Load textures for player, bullet, and gun
+  this->playerTexture.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/ship.png");
+  this->bulletTexture.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/Guns/missileTex01.png");
+  this->gunTexture01.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/Guns/gun01.png");
 
-    // Init textures
-    this->playerTexture.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/ship.png");
-    this->bulletTexture.loadFromFile(("/Users/bruceau/CLionProjects/HelloSFML/Textures/Guns/missileTex01.png"));
-    this->gunTexture01.loadFromFile("/Users/bruceau/CLionProjects/HelloSFML/Textures/Guns/gun01.png");
+  // Create players and initialize their textures
+  this->players.emplace_back(std::make_shared<sf::Texture>(playerTexture),
+                             std::make_shared<sf::Texture>(bulletTexture),
+                             std::make_shared<sf::Texture>(gunTexture01));
 
-    // Init player 1
-    this->players.push_back(Player(&playerTexture, &bulletTexture, &gunTexture01));
+  this->players.emplace_back(std::make_shared<sf::Texture>(playerTexture),
+                             std::make_shared<sf::Texture>(bulletTexture),
+                             std::make_shared<sf::Texture>(gunTexture01),
+                             sf::Keyboard::I, sf::Keyboard::K, sf::Keyboard::J,
+                             sf::Keyboard::L, sf::Keyboard::RShift);
 
-    // Init player 2 with I,K,J,L,RShift
-    this->players.push_back(Player(&playerTexture, &bulletTexture, &gunTexture01,
-                                   Keyboard::I, Keyboard::K, Keyboard::J,
-                                   Keyboard::L, Keyboard::RShift));
-
-    // Init UI
-    this->initUI();
-
+  this->initUI();
 }
 
 Game::~Game() {
 }
 
-void Game::Update() {
-    for(auto & player : players){
-        // Update Players
-        player.Update(this->window->getSize());
+void Game::update() {
+  // Update players and remove bullets that are off-screen
+  for (auto& player : players) {
+    player.update(this->window.getSize());
 
-        //Bullets update
-        // Window bounds check
-        for (auto it = player.getBullets().begin(); it != player.getBullets().end();) {
-            if( it->getPosition().x > (this->window->getSize().x))
-                player.getBullets().erase(it);
-            break;
-        }
-    }
+    auto& bullets = player.getBullets();
+    bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
+                                 [this](const Bullet& bullet) {
+                                   return bullet.getPosition().x > this->window.getSize().x;
+                                 }),
+                  bullets.end());
+  }
 
-    // Update UI
-    this->UpdateUI();
+  this->updateUI();
 }
 
-void Game::DrawUI(){
+void Game::draw() {
+  this->window.clear();
 
-    for (int i = 0; i < this->followPlayerText.size(); i++) {
-        this->window->draw(this->followPlayerText[i]);
-    }
-    for (int i = 0; i < this->staticPlayerText.size(); i++) {
-        this->window->draw(this->staticPlayerText[i]);
-    }
+  // Draw players
+  for (const auto& player : this->players)
+    player.draw(this->window);
 
+  this->drawUI();
+  this->window.display();
 }
 
-void Game::Draw() {
-    this->window->clear();
-    for(auto & player : this->players)
-        player.Draw(*this->window);
-    this->DrawUI();
-    this->window->display();
+void Game::updateUI() {
+  // Update UI elements for follow players
+  for (size_t i = 0; i < this->followPlayerText.size(); ++i) {
+    this->followPlayerText[i].setPosition(this->players[i].getPosition());
+    this->followPlayerText[i].setString(std::to_string(i) + " | " + this->players[i].getHpAsString());
+  }
+
+  // Update UI elements for static players
+  for (size_t i = 0; i < this->staticPlayerText.size(); ++i) {
+    this->staticPlayerText[i].setPosition(this->players[i].getPosition());
+    this->staticPlayerText[i].setString(std::to_string(i) + " | " + this->players[i].getHpAsString());
+  }
 }
 
+void Game::drawUI() {
+  // Draw follow player UI texts
+  for (const auto& text : this->followPlayerText)
+    this->window.draw(text);
 
-
-void Game::UpdateUI() {
-
-    for (int i = 0; i < this->followPlayerText.size(); i++) {
-        this->followPlayerText[i].setPosition(this->players[i].getPosition());
-        this->followPlayerText[i].setString(std::to_string(i) + " | " + this->players[i].getHpAsString() ) ;
-    }
-
-    for (int i = 0; i < this->staticPlayerText.size(); i++) {
-        this->staticPlayerText[i].setPosition(this->players[i].getPosition());
-        this->staticPlayerText[i].setString(std::to_string(i) + " | " + this->players[i].getHpAsString() ) ;
-    }
+  // Draw static player UI texts
+  for (const auto& text : this->staticPlayerText)
+    this->window.draw(text);
 }
 
 void Game::initUI() {
-    int i = 0;
-    for(auto player: this->players){
-
-        // Follow text init
-        Text tempText;
-        tempText.setCharacterSize(120);
-        tempText.setOutlineColor(Color::White);
-        tempText.setFillColor(Color::White);
-        tempText.setString(std::to_string(i++));
-
-        this->followPlayerText.push_back(Text(tempText));
-
-        // Static text init
-        tempText.setString("");
-        this->staticPlayerText.push_back(Text(tempText));
-
-    }
+  // Initialize UI texts for players
+  for (const auto& player : this->players) {
+    sf::Text tempText;
+    tempText.setCharacterSize(120);
+    tempText.setOutlineColor(sf::Color::White);
+    tempText.setFillColor(sf::Color::White);
+    tempText.setString("");
+    this->staticPlayerText.push_back(tempText);
+    this->followPlayerText.push_back(tempText);
+  }
 }

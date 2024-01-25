@@ -1,48 +1,31 @@
-//
-// Created by Bruce au on 6/7/2022.
-//
-
 #ifndef HELLOSFML_GAME_H
 #define HELLOSFML_GAME_H
 
 #include "Player.h"
+#include <SFML/Graphics.hpp>
 
 class Game {
-private:
-    RenderWindow *window;
+ private:
+  sf::RenderWindow& window;                   // Reference to the SFML render window
+  sf::Font font;                              // Font for UI text
+  std::vector<sf::Text> followPlayerText;      // UI text for following players
+  std::vector<sf::Text> staticPlayerText;      // UI text for static players
+  std::vector<Player> players;                 // Vector of players
+  sf::Texture playerTexture;                   // Texture for player sprite
+  sf::Texture bulletTexture;                   // Texture for bullet sprite
+  sf::Texture gunTexture01;                    // Texture for gun sprite
 
+ public:
+  Game(sf::RenderWindow& window);              // Constructor
+  ~Game();                                     // Destructor
 
-    // Text
-    Font font;
-    std::vector<Text> followPlayerText;
-    std::vector<Text> staticPlayerText;
+  void update();                               // Update game state
+  void draw();                                 // Render game
 
-    // Player vector to store players
-    std::vector<Player> players;
-
-    // Texture
-    Texture playerTexture;
-    Texture bulletTexture;
-    Texture gunTexture01;
-
-public:
-    Game(RenderWindow *window);
-    virtual ~Game();
-
-    // Accessors
-    inline RenderWindow& getWindow() {return *this->window;};
-
-    // Setters
-
-    // Functions
-    void Update();
-    void Draw();
-
-    // Text UI
-    void UpdateUI();
-    void DrawUI();
-    void initUI();
+ private:
+  void updateUI();                             // Update UI elements
+  void drawUI();                               // Draw UI elements
+  void initUI();                               // Initialize UI
 };
 
-
-#endif //HELLOSFML_GAME_H
+#endif // HELLOSFML_GAME_H

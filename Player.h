@@ -6,75 +6,66 @@
 #define HELLOSFML_PLAYER_H
 
 #include "Bullet.h"
+#include <memory>
+#include <SFML/Graphics.hpp>
+#include <iostream>
 
 class Player {
-private:
-    unsigned playerID;
+ private:
+  unsigned playerID;
+  int shootTimer;
+  int shootTimerMax;
+  int damageTimer;
+  int damageTimerMax;
+  std::shared_ptr<sf::Texture> texture;
+  sf::Sprite sprite;
+  sf::RectangleShape hitBox;
+  std::shared_ptr<sf::Texture> mainGunTexture;
+  sf::Sprite mainGunSprite;
+  sf::Vector2f playerCenter;
+  std::shared_ptr<sf::Texture> bulletTexture;
+  std::vector<Bullet> bullets;
+  int controls[5];
+  sf::Vector2f currentVelocity;
+  float maxVelocity;
+  float acceleration;
+  sf::Vector2f direction;
+  float stabilizerForce;
+  int level;
+  int exp;
+  int expNext;
+  int hp;
+  int hpMax;
+  int damage;
+  int damageMax;
+  int score;
 
-    // timer
-    int shootTimer;
-    int shootTimerMax;
-    int damageTimer; // how long you could get hit again?
-    int damageTimerMax;
-    Texture * texture;
+  // Movement helper functions
+  void handleInput();
+  void updateVelocity();
+  void applyStabilizerForce();
+  void moveSprite();
+  void updatePlayerCenter();
 
+ public:
+  Player(std::shared_ptr<sf::Texture> texture, std::shared_ptr<sf::Texture> bulletTexture,
+         std::shared_ptr<sf::Texture> mainGunTexture,
+         int UP = 22, int DOWN = 18,
+         int LEFT = 0, int RIGHT = 3,
+         int SHOOT = 57);
 
-    Sprite sprite;
-    RectangleShape hitBox;
+  virtual ~Player();
 
-    // Accessories
-    Texture *mainGunTexture;
-    Sprite mainGunSprite;
+  std::vector<Bullet> &getBullets();
+  const sf::Vector2f &getPosition() const;
+  const std::string getHpAsString() const;
 
-    Vector2f playerCenter;
-
-    // Bullet
-    Texture * bulletTexture;
-    std::vector<Bullet> bullets;
-
-    // Movements
-    int controls[5];
-    Vector2f currentVelocity;
-    float maxVelocity;
-    float acceleration;
-    Vector2f direction;
-    float stabilizerForce;
-
-    int level;
-    int exp;
-    int expNext;
-
-    int hp;
-    int hpMax;
-
-    int damage;
-    int damageMax;
-
-    int score;
-
-public:
-    Player(Texture * texture, Texture * bulletTexture, Texture *mainGunTexture,
-           int UP = 22, int DOWN = 18,
-           int LEFT = 0, int RIGHT = 3,
-           int SHOOT = 57);
-
-    virtual ~Player();
-
-    //Accessors
-    inline std::vector<Bullet>& getBullets(){return this->bullets;}
-    inline const Vector2f& getPosition() const{return this->sprite.getPosition();}
-    inline const String getHpAsString()const {return std::to_string(this->hp) + "/" + std::to_string(this->hpMax);}
-
-    // Functions
-    void Combat();
-    void Update(Vector2u windowsBounds);
-    void Draw(RenderTarget &target);
-    void Movement();    //keyboard stuff
-    void UpdateAccessories();
-
-    // static
-//    static unsigned playerNumber;
+  // Player actions
+  void combat();
+  void update(sf::Vector2u windowBounds);
+  void draw(sf::RenderTarget &target) const;
+  void movement();
+  void updateAccessories();
 };
-
 
 #endif //HELLOSFML_PLAYER_H

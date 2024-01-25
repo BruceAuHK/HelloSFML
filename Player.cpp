@@ -6,166 +6,189 @@
 
 unsigned playerNumber = 0;
 
-enum controls {UP = 0, DOWN, LEFT, RIGHT, SHOOT};
+enum controls { UP = 0, DOWN, LEFT, RIGHT, SHOOT };
 
-Player::Player(Texture * texture, Texture * bulletTexture, Texture *mainGunTexture,
+Player::Player(std::shared_ptr<sf::Texture> texture, std::shared_ptr<sf::Texture> bulletTexture,
+               std::shared_ptr<sf::Texture> mainGunTexture,
                int UP, int DOWN,
                int LEFT, int RIGHT,
                int SHOOT)
+    : level(1), exp(0), expNext(100),
+      hp(10), hpMax(10), damage(1),
+      damageMax(2), score(0),
+      maxVelocity(100.f),
+      acceleration(20.f) {
+  // Initialize member variables
+  this->texture = texture;
+  this->bulletTexture = bulletTexture;
+  this->mainGunTexture = mainGunTexture;
 
-        :level(1), exp(0), expNext(100),
-         hp(10), hpMax(10), damage(1),
-         damageMax(2), score(0)
+  // Set up main gun sprite
+  this->mainGunSprite.setTexture(*this->mainGunTexture);
+  this->mainGunSprite.setOrigin(
+      this->mainGunSprite.getGlobalBounds().width / 2,
+      this->mainGunSprite.getGlobalBounds().height / 2
+  );
+  this->mainGunSprite.rotate(90);
 
-{
-    // Texture
-    this->texture = texture;
-    this->bulletTexture = bulletTexture;
-    this->mainGunTexture = mainGunTexture;
-    this->mainGunSprite.setTexture(*this->mainGunTexture);
-    this->mainGunSprite.setOrigin(
-            this->mainGunSprite.getGlobalBounds().width/2,
-            this->mainGunSprite.getGlobalBounds().height/2
-    );
-    this->mainGunSprite.rotate(90);
+  // Set up player sprite
+  this->sprite.setTexture(*this->texture);
+  this->sprite.scale(0.15f, 0.15f);
 
-    this->sprite.scale(0.15f,0.15f); //Scale down the photo
+  // Initialize timers
+  this->shootTimerMax = 5;
+  this->shootTimer = this->shootTimerMax;
+  this->damageTimerMax = 10;
+  this->damageTimer = this->damageTimerMax;
 
+  // Set up controls
+  this->controls[controls::UP] = UP;
+  this->controls[controls::DOWN] = DOWN;
+  this->controls[controls::LEFT] = LEFT;
+  this->controls[controls::RIGHT] = RIGHT;
+  this->controls[controls::SHOOT] = SHOOT;
 
-    this->shootTimerMax = 5;
-    this->shootTimer = this->shootTimerMax;
+  // Set up movement properties
+  this->maxVelocity = 50.f;
+  this->acceleration = 2.f;
+  this->stabilizerForce = 0.7f;
 
-    this->damageTimerMax = 10;
-    this->damageTimer =this->damageTimerMax;
-
-    this->sprite.setTexture(*this->texture);
-    this->controls[controls::UP] = UP;
-    this->controls[controls::DOWN] = DOWN;
-    this->controls[controls::LEFT] = LEFT;
-    this->controls[controls::RIGHT] = RIGHT;
-    this->controls[controls::SHOOT] = SHOOT;
-
-    // Movement
-    this->maxVelocity = 35.f;
-    this->acceleration = 1.f;
-    this->stabilizerForce = 0.7f;
-
-
-    std::cout << this->playerID << std::endl;
+  std::cout << this->playerID << std::endl;
 }
-
 
 Player::~Player() {
-
 }
 
+void Player::update(sf::Vector2u windowBounds) {
+  // Update shoot timer
+  if (shootTimer < shootTimerMax)
+    shootTimer++;
 
+  // Perform player actions
+  movement();
+  updateAccessories();
+  combat();
 
-void Player::Update(Vector2u windowBounds) {
-    // Update timers
-    if(this->shootTimer < this->shootTimerMax)
-        shootTimer++;
-
-    if(this->damageTimer < this->damageTimerMax)
-        damageTimer++;
-
-
-
-
-    this->Movement();
-    this->UpdateAccessories();
-    this->Combat();
-
-
-    for(auto &bullet: bullets){
-        bullet.Update();
-    }
-
+  // Update bullet positions
+  for (auto &bullet : bullets) {
+    bullet.update();
+  }
 }
 
-void Player::Movement() {
-    if(Keyboard::isKeyPressed(Keyboard::Key(this->controls[controls::UP])))
-//        this->sprite.move(0.f,-30.f);
-        this->direction = {0.f,-1.f};
-    if(abs(this->currentVelocity.y) < abs(this->maxVelocity))
-        this->currentVelocity.y += this->direction.y * this->acceleration;
+void Player::movement() {
+  // Handle player input
+  handleInput();
 
-    if(Keyboard::isKeyPressed(Keyboard::Key(this->controls[controls::DOWN])))
-//        this->sprite.move(0.f,30.f);
-        this->direction = {0.f,1.f};
-    if(abs(this->currentVelocity.y) < abs(this->maxVelocity))
-        this->currentVelocity.y += this->direction.y * this->acceleration;
+  // Update player velocity based on input
+  updateVelocity();
 
-    if(Keyboard::isKeyPressed(Keyboard::Key(this->controls[controls::LEFT])))
-//        this->sprite.move(-30.f,0.f);
-        this->direction = {-1.f,0.f};
-    if(abs(this->currentVelocity.x) < abs(this->maxVelocity))
-        this->currentVelocity.x += this->direction.x * this->acceleration;
+  // Apply stabilizer force to gradually stop the player's movement
+  applyStabilizerForce();
 
-    if(Keyboard::isKeyPressed(Keyboard::Key(this->controls[controls::RIGHT])))
-//        this->sprite.move(30.f,0.f);
-        this->direction = {1.f,0.f};
-    if(abs(this->currentVelocity.x) < abs(this->maxVelocity))
-        this->currentVelocity.x += this->direction.x * this->acceleration;
+  // Move the player sprite based on velocity
+  moveSprite();
 
-    // drag force
-    if(this->currentVelocity.x  > 0) {
-        this->currentVelocity.x -= this->stabilizerForce;
-
-        if (this->currentVelocity.x < 0)
-            this->currentVelocity.x = 0;
-    }
-    else if(this->currentVelocity.x  < 0) {
-        this->currentVelocity.x += this->stabilizerForce;
-
-        if (this->currentVelocity.x > 0)
-            this->currentVelocity.x = 0;
-    }
-
-    if(this->currentVelocity.y  > 0) {
-        this->currentVelocity.y -= this->stabilizerForce;
-
-        if (this->currentVelocity.y < 0)
-            this->currentVelocity.y = 0;
-    }
-
-    else if(this->currentVelocity.y  < 0) {
-        this->currentVelocity.y += this->stabilizerForce;
-
-        if (this->currentVelocity.y > 0)
-            this->currentVelocity.y = 0;
-    }
-
-
-
-    // Finial move
-    this->sprite.move(this->currentVelocity.x, this->currentVelocity.y);
-
-
-    // Updates positions
-    this->playerCenter.x = this->sprite.getPosition().x + this->sprite.getGlobalBounds().width/2;
-    this->playerCenter.y = this->sprite.getPosition().y + this->sprite.getGlobalBounds().height/2;
+  // Update the center position of the player
+  updatePlayerCenter();
 }
 
-void Player::Draw(RenderTarget &target) {
-    for(auto &bullet: bullets)
-        bullet.Draw(target);
-    target.draw(this->mainGunSprite);
-    target.draw(this->sprite);
+void Player::handleInput() {
+  // Check keyboard input and set the movement direction
+  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(controls[controls::UP])))
+    direction = {0.f, -1.f};
 
+  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(controls[controls::DOWN])))
+    direction = {0.f, 1.f};
+
+  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(controls[controls::LEFT])))
+    direction = {-1.f, 0.f};
+
+  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(controls[controls::RIGHT])))
+    direction = {1.f, 0.f};
 }
 
-void Player::Combat() {
-    if(Keyboard::isKeyPressed(Keyboard::Key(this->controls[controls::SHOOT])))
-        this->bullets.push_back(
-                Bullet(bulletTexture,
-                       this->playerCenter,
-                       100.f, Vector2f(1.f, 0.f), 10.f));
-    this->shootTimer = 0;
+void Player::updateVelocity() {
+  // Update the player's velocity based on acceleration and direction
+  if (std::abs(currentVelocity.y) < std::abs(maxVelocity))
+    currentVelocity.y += direction.y * acceleration;
+
+  if (std::abs(currentVelocity.x) < std::abs(maxVelocity))
+    currentVelocity.x += direction.x * acceleration;
 }
 
-void Player::UpdateAccessories() {
-    this->mainGunSprite.setPosition(
-            this->playerCenter.x + 20.f,
-            this->playerCenter.y);
+void Player::applyStabilizerForce() {
+  // Apply stabilizer force to gradually stop the player's movement
+  if (currentVelocity.x > 0) {
+    currentVelocity.x -= stabilizerForce;
+
+    if (currentVelocity.x < 0)
+      currentVelocity.x = 0;
+  } else if (currentVelocity.x < 0) {
+    currentVelocity.x += stabilizerForce;
+
+    if (currentVelocity.x > 0)
+      currentVelocity.x = 0;
+  }
+
+  if (currentVelocity.y > 0) {
+    currentVelocity.y -= stabilizerForce;
+
+    if (currentVelocity.y < 0)
+      currentVelocity.y = 0;
+  } else if (currentVelocity.y < 0) {
+    currentVelocity.y += stabilizerForce;
+
+    if (currentVelocity.y > 0)
+      currentVelocity.y = 0;
+  }
+}
+
+void Player::moveSprite() {
+  // Move the player sprite based on its velocity
+  sprite.move(currentVelocity.x, currentVelocity.y);
+}
+
+void Player::updatePlayerCenter() {
+  // Update the center position of the player
+  playerCenter.x = sprite.getPosition().x + sprite.getGlobalBounds().width / 2;
+  playerCenter.y = sprite.getPosition().y + sprite.getGlobalBounds().height / 2;
+}
+
+void Player::draw(sf::RenderTarget &target) const{
+  // Draw bullets, main gun sprite, and player sprite
+  for (auto &bullet : bullets)
+    bullet.draw(target);
+
+  target.draw(mainGunSprite);
+  target.draw(sprite);
+}
+
+void Player::combat() {
+  // Handle shooting action
+  if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key(controls[controls::SHOOT]))) {
+    if (shootTimer >= shootTimerMax) {
+      bullets.push_back(Bullet(bulletTexture, playerCenter, 100.f, sf::Vector2f(1.f, 0.f), 10.f));
+      shootTimer = 0;
+    }
+  }
+}
+
+void Player::updateAccessories() {
+  // Update the position of the main gun sprite
+  mainGunSprite.setPosition(playerCenter.x + 20.f, playerCenter.y);
+}
+
+std::vector<Bullet> &Player::getBullets() {
+  // Return a reference to the player's bullets vector
+  return bullets;
+}
+
+const sf::Vector2f &Player::getPosition() const {
+  // Return the position of the player sprite
+  return sprite.getPosition();
+}
+
+const std::string Player::getHpAsString() const {
+  // Return the player's HP as a string
+  return std::to_string(hp) + "/" + std::to_string(hpMax);
 }
